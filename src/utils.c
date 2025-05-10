@@ -65,12 +65,29 @@ uint8_t ip_prefix_match(uint8_t *ipa, uint8_t *ipb) {
 /**
  * @brief 计算16位校验和
  *
- * @param buf 要计算的数据包
+ * @param data 要计算的数据包
  * @param len 要计算的长度
  * @return uint16_t 校验和
  */
-uint16_t checksum16(uint16_t *data, size_t len) {
+uint16_t checksum16(uint16_t *data, size_t len)
+{
     // TO-DO
+    uint32_t sum = 0;
+    
+    while(len > 0){
+        if (len == 1){
+            sum += *(uint8_t *)data << 8;
+            break;
+        } else {
+            sum += swap16(*data);
+            data++;
+            len -= 2;
+        }
+    }
+    while((sum >> 16) != 0){
+        sum = (sum >> 16) + (sum & 0xFFFF);
+    }
+    return swap16(~(sum & 0xFFFF));
 }
 
 #pragma pack(1)
