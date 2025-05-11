@@ -130,11 +130,12 @@ void arp_out(buf_t *buf, uint8_t *ip) {
     uint8_t *mac = (uint8_t *)map_get(&arp_table, ip);
 
     if (mac != NULL) {
-        ethernet_out(buf, mac, NET_PROTOCOL_ARP);
+        ethernet_out(buf, mac, NET_PROTOCOL_IP);
         return;
     }
 
     if (map_get(&arp_buf, ip) == NULL) {
+        printf("arp_out: %s not in arp_buf\n", iptos(ip));
         map_set(&arp_buf, ip, buf);
         arp_req(ip);
     }

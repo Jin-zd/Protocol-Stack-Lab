@@ -74,8 +74,8 @@ uint16_t checksum16(uint16_t *data, size_t len)
     // TO-DO
     uint32_t sum = 0;
     
-    while(len > 0){
-        if (len == 1){
+    while(len > 0) {
+        if (len == 1) {
             sum += *(uint8_t *)data << 8;
             break;
         } else {
@@ -84,7 +84,7 @@ uint16_t checksum16(uint16_t *data, size_t len)
             len -= 2;
         }
     }
-    while((sum >> 16) != 0){
+    while((sum >> 16) != 0) {
         sum = (sum >> 16) + (sum & 0xFFFF);
     }
     return swap16(~(sum & 0xFFFF));
@@ -110,5 +110,22 @@ typedef struct peso_hdr {
  * @return uint16_t 计算得到的16位校验和
  */
 uint16_t transport_checksum(uint8_t protocol, buf_t *buf, uint8_t *src_ip, uint8_t *dst_ip) {
-    // TO-DO
+    buf_add_header(buf, sizeof(peso_hdr_t));
+
+    uint8_t backup[sizeof(peso_hdr_t)];
+    memcpy(backup, buf->data, sizeof(peso_hdr_t));
+
+    peso_hdr_t *peso_hdr = (peso_hdr_t *)buf->data;
+    memcpy(peso_hdr->src_ip, src_ip, NET_IP_LEN);
+    memcpy(peso_hdr->dst_ip, dst_ip, NET_IP_LEN);
+    peso_hdr->placeholder = 0;
+    peso_hdr->protocol = protocol;
+    peso_hdr->total_len16 = swap16(buf->len - sizeof(peso_hdr_t));
+
+    uint16_t checksum = checksum16((uint16_t *)buf->data, buf->len);
+
+    memcpy(buf->data, backup, sizeof(peso_hdr_t));
+    buf_remove_header(buf, sizeof(peso_hdr_t));
+
+    return checksum;
 }
