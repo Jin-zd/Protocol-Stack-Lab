@@ -30,6 +30,10 @@ void ip_in(buf_t *buf, uint8_t *src_mac) {
     }
     ip_hdr->hdr_checksum16 = hdr_checksum;
 
+    if (buf->len > swap16(ip_hdr->total_len16)) {
+        buf_remove_padding(buf, buf->len - swap16(ip_hdr->total_len16));
+    }
+
     buf_remove_header(buf, sizeof(ip_hdr_t));
 
     if (net_in(buf, ip_hdr->protocol, ip_hdr->src_ip) < 0) {
