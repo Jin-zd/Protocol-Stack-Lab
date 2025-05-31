@@ -109,7 +109,8 @@ void ip_out(buf_t *buf, uint8_t *ip, net_protocol_t protocol) {
         ip_hdr->tos = 0;
         ip_hdr->total_len16 = swap16(loopback_buf.len);
         ip_hdr->ttl = 64;
-        ip_hdr->id16 = swap16(++id);
+        id++;
+        ip_hdr->id16 = swap16(id);
         ip_hdr->flags_fragment16 = 0;
         ip_hdr->protocol = protocol;
         memcpy(ip_hdr->dst_ip, ip, NET_IP_LEN);
