@@ -41,7 +41,14 @@ add_executable(web_server
 target_link_libraries(web_server ${PCAP})
 target_compile_definitions(web_server PUBLIC HTTP_RESOURCE_DIR="${HTTP_RESOURCE_DIR}" ICMP TCP)
 
-set(TEST_FIX_SOURCE 
+add_executable(ping_demo
+    ${DIR_SRCS}
+    ./ping_demo.c
+)
+target_link_libraries(ping_demo ${PCAP})
+target_compile_definitions(ping_demo PRIVATE ICMP)
+
+set(TEST_FIX_SOURCE
     testing/faker/driver.c 
     testing/global.c
     src/net.c
@@ -156,6 +163,19 @@ add_executable(tcp_test
 target_link_libraries(tcp_test ${PCAP})
 target_compile_definitions(tcp_test PUBLIC TEST ICMP TCP)
 
+add_executable(icmp_ping_test
+    testing/icmp_ping_test.c
+    src/ethernet.c
+    src/arp.c
+    src/ip.c
+    src/icmp.c
+    testing/faker/udp.c
+    ${TEST_FIX_SOURCE}
+    ${EXTRA_FILE}
+)
+target_link_libraries(icmp_ping_test ${PCAP})
+target_compile_definitions(icmp_ping_test PUBLIC TEST ICMP)
+
 enable_testing()
 
 add_test(
@@ -196,6 +216,11 @@ add_test(
 add_test(
     NAME tcp_test
     COMMAND $<TARGET_FILE:tcp_test> ${CMAKE_CURRENT_LIST_DIR}/testing/data/tcp_test
+)
+
+add_test(
+    NAME icmp_ping_test
+    COMMAND $<TARGET_FILE:icmp_ping_test>
 )
 
 message("Executable files is in ${EXECUTABLE_OUTPUT_PATH}.")

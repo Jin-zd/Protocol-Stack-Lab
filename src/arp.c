@@ -127,6 +127,14 @@ void arp_in(buf_t *buf, uint8_t *src_mac) {
  */
 void arp_out(buf_t *buf, uint8_t *ip) {
     // TO-DO
+    
+    // 特殊处理：如果目标IP是本机IP或回环地址，直接使用本机MAC
+    if (memcmp(ip, net_if_ip, NET_IP_LEN) == 0 || 
+        (ip[0] == 127 && ip[1] == 0 && ip[2] == 0 && ip[3] == 1)) {
+        ethernet_out(buf, net_if_mac, NET_PROTOCOL_IP);
+        return;
+    }
+    
     uint8_t *mac = (uint8_t *)map_get(&arp_table, ip);
 
     if (mac != NULL) {
