@@ -16,8 +16,17 @@ void ethernet_in(buf_t *buf) {
     }
     ether_hdr_t *hdr = (ether_hdr_t *)buf->data;
     buf_remove_header(buf, sizeof(ether_hdr_t));
-    net_in(buf, swap16(hdr->protocol16), hdr->src);
     
+    uint16_t protocol = swap16(hdr->protocol16);
+    
+    // 检查是否是IPv6数据包
+    if (protocol == NET_PROTOCOL_IP6) {
+        // 调用IPv6处理函数
+        ip6_in(buf, hdr->src);
+    } else {
+        // 调用普通协议处理函数
+        net_in(buf, protocol, hdr->src);
+    }
 }
 /**
  * @brief 处理一个要发送的数据包
