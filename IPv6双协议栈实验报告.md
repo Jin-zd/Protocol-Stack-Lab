@@ -11,7 +11,7 @@
 本实验实现的IPv6双协议栈采用分层架构设计：
 
 ```
-应用层 (UDP/TCP/ICMP)
+应用层 (UDP/TCP)
     ↕
 网络层 (IPv4/IPv6)
     ↕
@@ -22,10 +22,10 @@
 
 ### 1.2 协议栈特性
 
-- **双协议栈支持**：同时支持IPv4和IPv6协议
-- **地址映射机制**：实现IPv4到IPv6的地址映射(::FFFF:x.x.x.x)
-- **统一接口**：为上层协议提供统一的网络服务接口
-- **互操作性**：IPv4和IPv6协议之间可以通过映射地址实现互通
+- 双协议栈支持：同时支持IPv4和IPv6协议
+- 地址映射机制：实现IPv4到IPv6的地址映射(::FFFF:x.x.x.x)
+- 统一接口：为上层协议提供统一的网络服务接口
+- 互操作性：IPv4和IPv6协议之间可以通过映射地址实现互通
 
 ## 2. 数据结构设计
 
@@ -44,7 +44,7 @@ typedef struct ip6_hdr {
 #pragma pack()
 ```
 
-**设计要点：**
+设计要点：
 - `version_tc_flowlabel`：32位字段，包含版本号(4位)、流量类别(8位)和流标签(20位)
 - `payload_len`：16位字段，表示有效载荷长度(不包括IPv6头部)
 - `next_header`：8位字段，指示下一个头部的协议类型
@@ -63,7 +63,7 @@ const uint8_t IPV4_MAPPED_PREFIX[NET_IP6_LEN] = {
 };
 ```
 
-**映射机制：**
+映射机制：
 - 前80位(10字节)全为0
 - 接下来16位为0xFFFF
 - 最后32位存储IPv4地址
@@ -84,16 +84,16 @@ extern uint8_t net_if_ip6[16];           // IPv6地址
 void ip6_in(buf_t *buf, uint8_t *src_mac)
 ```
 
-**算法流程：**
+算法流程：
 
-1. **长度验证**
+1. 长度验证
    ```c
    if (buf->len < sizeof(ip6_hdr_t)) {
        return;  // 数据包太小，丢弃
    }
    ```
 
-2. **版本号检查**
+2. 版本号检查
    ```c
    ip6_hdr_t *ip6_hdr = (ip6_hdr_t *)buf->data;
    uint8_t version = (ntohl(ip6_hdr->version_tc_flowlabel) >> 28) & 0xF;
@@ -102,7 +102,7 @@ void ip6_in(buf_t *buf, uint8_t *src_mac)
    }
    ```
 
-3. **载荷长度验证**
+3. 载荷长度验证
    ```c
    uint16_t payload_len = ntohs(ip6_hdr->payload_len);
    if (payload_len + sizeof(ip6_hdr_t) > buf->len) {
@@ -110,7 +110,7 @@ void ip6_in(buf_t *buf, uint8_t *src_mac)
    }
    ```
 
-4. **目标地址检查**
+4. 目标地址检查
    ```c
    if (memcmp(ip6_hdr->dst_ip, net_if_ip6, NET_IP6_LEN) != 0) {
        // 检查是否是IPv4映射地址
@@ -125,7 +125,7 @@ void ip6_in(buf_t *buf, uint8_t *src_mac)
    }
    ```
 
-5. **头部移除和上层协议处理**
+5. 头部移除和上层协议处理
    ```c
    buf_remove_header(buf, sizeof(ip6_hdr_t));
    uint8_t next_header = ip6_hdr->next_header;
@@ -144,9 +144,9 @@ void ip6_in(buf_t *buf, uint8_t *src_mac)
 void ip6_out(buf_t *buf, uint8_t *ip6, net_protocol_t protocol)
 ```
 
-**算法流程：**
+算法流程：
 
-1. **MTU检查**
+1. MTU检查
    ```c
    int max_payload_len = ETHERNET_MAX_TRANSPORT_UNIT - sizeof(ip6_hdr_t);
    if (buf->len > max_payload_len) {
@@ -154,14 +154,14 @@ void ip6_out(buf_t *buf, uint8_t *ip6, net_protocol_t protocol)
    }
    ```
 
-2. **添加IPv6头部**
+2. 添加IPv6头部
    ```c
    uint16_t payload_len = buf->len;
    buf_add_header(buf, sizeof(ip6_hdr_t));
    ip6_hdr_t *ip6_hdr = (ip6_hdr_t *)buf->data;
    ```
 
-3. **设置头部字段**
+3. 设置头部字段
    ```c
    // 版本号设为6，流量类别和流标签设为0
    uint32_t version_tc_flowlabel = IP_VERSION_6 << 28;
@@ -175,7 +175,7 @@ void ip6_out(buf_t *buf, uint8_t *ip6, net_protocol_t protocol)
    memcpy(ip6_hdr->dst_ip, ip6, NET_IP6_LEN);
    ```
 
-4. **地址解析和发送**
+4. 地址解析和发送
    ```c
    uint8_t ipv4_addr[NET_IP_LEN];
    if (is_ip4_mapped_ip6(ip6) && ip6_to_ip4_addr(ip6, ipv4_addr)) {
@@ -196,9 +196,9 @@ void ip6_out(buf_t *buf, uint8_t *ip6, net_protocol_t protocol)
 int ip4_to_ip6_addr(const uint8_t *ip4_addr, uint8_t *ip6_addr)
 ```
 
-**功能**：将IPv4地址转换为IPv4映射的IPv6地址
+功能：将IPv4地址转换为IPv4映射的IPv6地址
 
-**算法**：
+算法：
 1. 复制IPv4映射前缀(80位0 + 16位0xFFFF)
 2. 将IPv4地址复制到最后32位
 
@@ -213,9 +213,9 @@ memcpy(ip6_addr + 12, ip4_addr, NET_IP_LEN);
 int is_ip4_mapped_ip6(const uint8_t *ip6_addr)
 ```
 
-**功能**：检测IPv6地址是否为IPv4映射地址
+功能：检测IPv6地址是否为IPv4映射地址
 
-**算法**：
+算法：
 1. 检查前80位是否全为0
 2. 检查第81-96位是否为0xFFFF
 
@@ -241,9 +241,9 @@ return 1;  // 是IPv4映射地址
 int ip6_to_ip4_addr(const uint8_t *ip6_addr, uint8_t *ip4_addr)
 ```
 
-**功能**：从IPv4映射的IPv6地址中提取IPv4地址
+功能：从IPv4映射的IPv6地址中提取IPv4地址
 
-**算法**：
+算法：
 1. 首先验证是否为IPv4映射地址
 2. 提取最后32位作为IPv4地址
 
@@ -261,6 +261,14 @@ return 1;
 ### 4.1 测试架构
 
 测试文件`ip6_test.c`采用单元测试框架，包含8个主要测试模块：
+- IPv6地址转换测试
+- IPv6头部解析测试
+- IPv6数据包发送测试
+- IPv6和IPv4映射地址互操作性测试
+- IPv6数据包输入处理测试
+- 大数据包处理测试
+- 错误处理测试
+- IPv6双协议栈集成测试
 
 ```c
 struct {
@@ -312,17 +320,17 @@ void print_ipv6_addr(const uint8_t *ip6) {
 void test_ipv6_address_conversion()
 ```
 
-**测试目标**：验证IPv4-IPv6地址转换函数的正确性
+测试目标：验证IPv4-IPv6地址转换函数的正确性
 
-**测试步骤**：
-1. **IPv4到IPv6映射转换测试**
+测试步骤：
+1. IPv4到IPv6映射转换测试
    ```c
    uint8_t ipv4_addr[] = {192, 168, 1, 100};
    uint8_t ipv6_mapped[NET_IP6_LEN];
    int result = ip4_to_ip6_addr(ipv4_addr, ipv6_mapped);
    ```
 
-2. **映射地址格式验证**
+2. 映射地址格式验证
    ```c
    uint8_t expected_mapped[] = {
        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -332,13 +340,13 @@ void test_ipv6_address_conversion()
                "IPv4-mapped IPv6 address format is correct");
    ```
 
-3. **映射地址检测测试**
+3. 映射地址检测测试
    ```c
    test_assert(is_ip4_mapped_ip6(ipv6_mapped) == 1, 
                "Should detect IPv4-mapped address");
    ```
 
-4. **IPv6到IPv4提取测试**
+4. IPv6到IPv4提取测试
    ```c
    uint8_t extracted_ipv4[NET_IP_LEN];
    result = ip6_to_ip4_addr(ipv6_mapped, extracted_ipv4);
@@ -346,7 +354,7 @@ void test_ipv6_address_conversion()
                "Extracted IPv4 address should match original");
    ```
 
-5. **纯IPv6地址测试**
+5. 纯IPv6地址测试
    ```c
    uint8_t pure_ipv6[] = {
        0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00,
@@ -362,9 +370,9 @@ void test_ipv6_address_conversion()
 void test_ipv6_header_parsing()
 ```
 
-**测试目标**：验证IPv6数据包头部字段的正确解析
+测试目标：验证IPv6数据包头部字段的正确解析
 
-**测试数据构造**：
+测试数据构造：
 ```c
 ip6_hdr_t *ip6_hdr = (ip6_hdr_t *)test_buf.data;
 
@@ -376,7 +384,7 @@ ip6_hdr->next_header = NET_PROTOCOL_UDP;
 ip6_hdr->hop_limit = IP6_DEFAULT_HOP_LIMIT;
 ```
 
-**验证测试**：
+验证测试：
 ```c
 uint8_t version = (ntohl(ip6_hdr->version_tc_flowlabel) >> 28) & 0xF;
 test_assert(version == IP_VERSION_6, "IPv6 version field parsed correctly");
@@ -391,13 +399,63 @@ test_assert(flow_label == 0x12345, "Flow label parsed correctly");
 void test_ipv6_packet_output()
 ```
 
-**测试目标**：验证IPv6数据包的正确发送
+测试目标：验证IPv6数据包的正确发送和头部字段设置
 
-**测试流程**：
-1. 创建测试数据
-2. 调用`ip6_out()`函数
-3. 验证IPv6头部是否正确添加
-4. 检查所有头部字段是否正确设置
+测试数据准备：
+```c
+// 创建测试载荷数据
+char test_data[] = "Hello IPv6 World!";
+buf_init(&test_buf, strlen(test_data));
+memcpy(test_buf.data, test_data, strlen(test_data));
+
+// 设定目标IPv6地址
+uint8_t dst_ipv6[] = {
+    0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02
+};
+```
+
+发送操作测试：
+```c
+// 记录原始数据长度
+size_t original_len = test_buf.len;
+
+// 执行IPv6数据包发送
+ip6_out(&test_buf, dst_ipv6, NET_PROTOCOL_UDP);
+
+// 验证IPv6头部是否正确添加
+test_assert(test_buf.len == original_len + sizeof(ip6_hdr_t), 
+            "IPv6 header added correctly");
+```
+
+头部字段验证：
+```c
+ip6_hdr_t *ip6_hdr = (ip6_hdr_t *)test_buf.data;
+
+// 验证版本号字段
+uint8_t version = (ntohl(ip6_hdr->version_tc_flowlabel) >> 28) & 0xF;
+test_assert(version == IP_VERSION_6, "IPv6 version set correctly");
+
+// 验证载荷长度字段
+test_assert(ntohs(ip6_hdr->payload_len) == original_len, 
+            "Payload length set correctly");
+
+// 验证下一头部字段
+test_assert(ip6_hdr->next_header == NET_PROTOCOL_UDP, 
+            "Next header field set correctly");
+
+// 验证跳数限制字段
+test_assert(ip6_hdr->hop_limit == IP6_DEFAULT_HOP_LIMIT, 
+            "Hop limit set correctly");
+
+// 验证源地址字段
+test_assert(memcmp(ip6_hdr->src_ip, net_if_ip6, NET_IP6_LEN) == 0, 
+            "Source IPv6 address set correctly");
+
+// 验证目标地址字段
+test_assert(memcmp(ip6_hdr->dst_ip, dst_ipv6, NET_IP6_LEN) == 0, 
+            "Destination IPv6 address set correctly");
+```
 
 #### 4.3.4 互操作性测试
 
@@ -405,13 +463,68 @@ void test_ipv6_packet_output()
 void test_ipv6_ipv4_interoperability()
 ```
 
-**测试目标**：验证IPv4和IPv6协议的互操作性
+测试目标：验证IPv4和IPv6协议的互操作性，确保IPv4映射地址能够正确处理
 
-**测试方法**：
-1. 创建IPv4地址
-2. 转换为IPv6映射地址
-3. 使用IPv6协议发送数据包
-4. 验证目标地址仍能被正确识别为IPv4映射地址
+地址转换准备：
+```c
+// 创建标准IPv4地址
+uint8_t ipv4_addr[] = {192, 168, 1, 100};
+
+// 转换为IPv4映射的IPv6地址
+uint8_t ipv6_mapped[NET_IP6_LEN];
+ip4_to_ip6_addr(ipv4_addr, ipv6_mapped);
+```
+
+数据包构造测试：
+```c
+// 创建互操作测试数据
+char test_data[] = "IPv4-IPv6 interop test";
+buf_init(&test_buf, strlen(test_data));
+memcpy(test_buf.data, test_data, strlen(test_data));
+
+// 记录原始长度用于后续验证
+size_t original_len = test_buf.len;
+```
+
+IPv6发送IPv4映射地址测试：
+```c
+// 使用IPv6协议发送到IPv4映射地址
+ip6_out(&test_buf, ipv6_mapped, NET_PROTOCOL_UDP);
+
+// 验证数据包结构正确性
+test_assert(test_buf.len == original_len + sizeof(ip6_hdr_t), 
+            "IPv6 header added to IPv4-mapped address packet");
+```
+
+映射地址格式验证：
+```c
+ip6_hdr_t *ip6_hdr = (ip6_hdr_t *)test_buf.data;
+
+// 验证目标地址字段
+test_assert(memcmp(ip6_hdr->dst_ip, ipv6_mapped, NET_IP6_LEN) == 0, 
+            "Destination address set to IPv4-mapped IPv6 address");
+
+// 验证地址映射检测功能
+test_assert(is_ip4_mapped_ip6(ip6_hdr->dst_ip) == 1, 
+            "Packet destination address correctly detected as IPv4-mapped");
+```
+
+双向转换验证：
+```c
+// 验证能够从映射地址提取原始IPv4地址
+uint8_t extracted_ipv4[NET_IP_LEN];
+int result = ip6_to_ip4_addr(ip6_hdr->dst_ip, extracted_ipv4);
+
+test_assert(result == 1, 
+            "IPv4 address successfully extracted from mapped address");
+test_assert(memcmp(extracted_ipv4, ipv4_addr, NET_IP_LEN) == 0, 
+            "Extracted IPv4 address matches original address");
+```
+
+测试场景覆盖：
+- IPv4地址 → IPv6映射地址 → IPv6数据包发送
+- IPv6数据包接收 → 映射地址识别 → IPv4地址提取
+- 混合网络环境下的协议栈兼容性验证
 
 #### 4.3.5 错误处理测试
 
@@ -419,32 +532,43 @@ void test_ipv6_ipv4_interoperability()
 void test_ipv6_error_handling()
 ```
 
-**测试目标**：验证各种错误情况的正确处理
+测试目标：验证各种错误情况的正确处理
 
-**错误场景**：
-1. **数据包长度不足**
+错误场景：
+1. 数据包长度不足
    ```c
    buf_init(&test_buf, sizeof(ip6_hdr_t) - 1);
    ip6_in(&test_buf, src_mac);
    // 应该被拒绝
    ```
 
-2. **错误的版本号**
+2. 错误的版本号
    ```c
    uint32_t wrong_version = (IP_VERSION_4 << 28);
    ip6_hdr->version_tc_flowlabel = htonl(wrong_version);
    // 应该被拒绝
    ```
 
-3. **载荷长度不匹配**
+3. 载荷长度不匹配
    ```c
    ip6_hdr->payload_len = htons(50); // 声称50字节，实际只有10字节
    // 应该被拒绝
    ```
 
 ## 5. 实验结果
-
-### 5.1 测试结果统计
+创建 `build` 文件夹：
+```bash
+mkdir build
+cd build
+```
+使用 CMake 构建项目：
+```bash
+cmake --build . --target ip6_test
+```
+运行测试：
+```bash
+ip6_test ../testing/data/ip6_test
+```
 
 运行完整测试套件后的结果：
 
@@ -453,82 +577,78 @@ Starting IPv6 dual stack unit tests
 ========================================
 
 === Test IPv6 address conversion functions ===
-✓ PASS: IPv4 to IPv6 mapped address conversion should succeed
-✓ PASS: IPv4-mapped IPv6 address format is correct
-✓ PASS: Should detect IPv4-mapped address
-✓ PASS: Extracting IPv4 address from IPv6 mapped address should succeed
-✓ PASS: Extracted IPv4 address should match original
-✓ PASS: Pure IPv6 address should not be detected as IPv4-mapped
-✓ PASS: Extracting IPv4 address from pure IPv6 address should fail
+[PASS]: IPv4 to IPv6 mapped address conversion should succeed
+[PASS]: IPv4-mapped IPv6 address format is correct
+[PASS]: Should detect IPv4-mapped address
+[PASS]: Extracting IPv4 address from IPv6 mapped address should succeed
+[PASS]: Extracted IPv4 address should match original
+[PASS]: Pure IPv6 address should not be detected as IPv4-mapped
+[PASS]: Extracting IPv4 address from pure IPv6 address should fail
 
 === Test IPv6 packet header parsing ===
-✓ PASS: IPv6 version field parsed correctly
-✓ PASS: Traffic class parsed correctly
-✓ PASS: Flow label parsed correctly
-✓ PASS: Payload length parsed correctly
-✓ PASS: Next header field parsed correctly
-✓ PASS: Hop limit parsed correctly
+[PASS]: IPv6 version field parsed correctly
+[PASS]: Traffic class parsed correctly
+[PASS]: Flow label parsed correctly
+[PASS]: Payload length parsed correctly
+[PASS]: Next header field parsed correctly
+[PASS]: Hop limit parsed correctly
 
 === Test IPv6 packet output ===
-✓ PASS: IPv6 header added correctly
-✓ PASS: IPv6 version set correctly
-✓ PASS: Payload length set correctly
-✓ PASS: Next header field set correctly
-✓ PASS: Hop limit set correctly
-✓ PASS: Source IPv6 address set correctly
-✓ PASS: Destination IPv6 address set correctly
+[PASS]: IPv6 header added correctly
+[PASS]: IPv6 version set correctly
+[PASS]: Payload length set correctly
+[PASS]: Next header field set correctly
+[PASS]: Hop limit set correctly
+[PASS]: Source IPv6 address set correctly
+[PASS]: Destination IPv6 address set correctly
 
 === Test IPv6 and IPv4-mapped address interoperability ===
-✓ PASS: IPv6 header added to IPv4-mapped address packet
-✓ PASS: Destination address set to IPv4-mapped IPv6 address
-✓ PASS: Packet destination address correctly detected as IPv4-mapped
+[PASS]: IPv6 header added to IPv4-mapped address packet
+[PASS]: Destination address set to IPv4-mapped IPv6 address
+[PASS]: Packet destination address correctly detected as IPv4-mapped
 
 === Test IPv6 packet input ===
-✓ PASS: Packet length is sufficient for IPv6 header
-✓ PASS: IPv6 version validated
-✓ PASS: Payload length validated
-✓ PASS: Destination address is local IPv6 address
+[PASS]: Packet length is sufficient for IPv6 header
+[PASS]: IPv6 version validated
+[PASS]: Payload length validated
+[PASS]: Destination address is local IPv6 address
 
 === Test IPv6 large packet handling ===
-✓ PASS: Large packet handled correctly, does not exceed Ethernet MTU
-✓ PASS: IPv6 header remains correct after truncation
+[PASS]: Large packet handled correctly, does not exceed Ethernet MTU
+[PASS]: IPv6 header remains correct after truncation
 
 === Test IPv6 error handling ===
-✓ PASS: Packet too small is correctly rejected
-✓ PASS: Packet with wrong version is correctly rejected
-✓ PASS: Packet with mismatched payload length is correctly rejected
+=== Test IPv6 error handling ===
+[PASS]: Packet too small is correctly rejected
+[PASS]: Packet with wrong version is correctly rejected
+[PASS]: Packet with mismatched payload length is correctly rejected
 
 === Test IPv6 dual stack integration ===
-✓ PASS: IPv4 address is configured
-✓ PASS: IPv6 address is configured
-✓ PASS: Local IPv4 address can be correctly mapped to IPv6
+[PASS]: IPv4 address is configured
+[PASS]: IPv6 address is configured
+Local IPv4 address: 192.168.163.103
+Local IPv6 address: 2001:0db8:0000:0000:0000:0000:0000:0001
+Local IPv4-mapped IPv6 address: 0000:0000:0000:0000:0000:ffff:c0a8:a367
+[PASS]: Local IPv4 address can be correctly mapped to IPv6
 
 ========================================
 Test complete!
-Passed: 32 tests
+Passed: 35 tests
 Failed: 0 tests
-✓ All tests passed! IPv6 dual stack implementation is correct.
+[OK] All tests passed! IPv6 dual stack implementation is correct.
 ```
-
-### 5.2 功能验证
-
-1. **地址转换功能**：所有IPv4-IPv6地址转换测试通过
-2. **协议处理**：IPv6数据包的收发处理正常
-3. **互操作性**：IPv4和IPv6协议可以通过映射地址互通
-4. **错误处理**：各种异常情况都能正确处理
-5. **双协议栈集成**：IPv4和IPv6协议可以同时工作
 
 ## 6. 遇到的问题和解决方案
 
 ### 6.1 字节序问题
 
-**问题描述**：IPv6头部中的多字节字段需要正确处理网络字节序和主机字节序的转换。
+问题描述：IPv6头部中的多字节字段需要正确处理网络字节序和主机字节序的转换。
 
-**具体表现**：
+具体表现：
 - `version_tc_flowlabel`字段的位操作错误
 - `payload_len`字段的字节序转换遗漏
 
-**解决方案**：
+解决方案：
 ```c
 // 正确的版本号设置
 uint32_t version_tc_flowlabel = IP_VERSION_6 << 28;
@@ -544,13 +664,13 @@ uint16_t payload_len = ntohs(ip6_hdr->payload_len);
 
 ### 6.2 地址映射精度问题
 
-**问题描述**：IPv4映射IPv6地址的格式检查不够严格，可能误判其他地址为映射地址。
+问题描述：IPv4映射IPv6地址的格式检查不够严格，可能误判其他地址为映射地址。
 
-**具体表现**：
+具体表现：
 - 只检查了前缀，没有完整验证映射格式
 - 边界条件处理不当
 
-**解决方案**：
+解决方案：
 ```c
 int is_ip4_mapped_ip6(const uint8_t *ip6_addr) {
     if (!ip6_addr) {
@@ -575,13 +695,13 @@ int is_ip4_mapped_ip6(const uint8_t *ip6_addr) {
 
 ### 6.3 数据包长度处理问题
 
-**问题描述**：IPv6数据包的长度计算和验证逻辑不正确。
+问题描述：IPv6数据包的长度计算和验证逻辑不正确。
 
-**具体表现**：
+具体表现：
 - 载荷长度计算错误（包含或不包含头部）
 - MTU检查逻辑错误
 
-**解决方案**：
+解决方案：
 ```c
 // IPv6载荷长度不包括IPv6头部
 ip6_hdr->payload_len = htons(buf->len - sizeof(ip6_hdr_t));
@@ -601,13 +721,13 @@ if (buf->len > max_payload_len) {
 
 ### 6.4 目标地址检查逻辑问题
 
-**问题描述**：IPv6数据包接收时的目标地址检查逻辑复杂，容易出错。
+问题描述：IPv6数据包接收时的目标地址检查逻辑复杂，容易出错。
 
-**具体表现**：
+具体表现：
 - 纯IPv6地址和IPv4映射地址的判断逻辑混乱
 - 本机地址匹配逻辑不清晰
 
-**解决方案**：
+解决方案：
 ```c
 // 清晰的目标地址检查逻辑
 if (memcmp(ip6_hdr->dst_ip, net_if_ip6, NET_IP6_LEN) != 0) {
@@ -622,57 +742,3 @@ if (memcmp(ip6_hdr->dst_ip, net_if_ip6, NET_IP6_LEN) != 0) {
     }
 }
 ```
-
-### 6.5 测试环境配置问题
-
-**问题描述**：测试环境的网络接口配置和协议栈初始化顺序影响测试结果。
-
-**解决方案**：
-1. 确保网络接口正确初始化
-2. 协议栈按正确顺序加载
-3. 测试数据使用已知的有效地址
-4. 添加必要的模拟函数
-
-## 7. 实验总结
-
-### 7.1 实验成果
-
-1. **成功实现IPv6双协议栈**
-   - 完整的IPv6数据包处理功能
-   - IPv4-IPv6地址映射机制
-   - 双协议栈互操作性
-
-2. **全面的测试覆盖**
-   - 单元测试覆盖所有关键功能
-   - 错误处理测试保证健壮性
-   - 集成测试验证系统协作
-
-3. **良好的代码质量**
-   - 清晰的模块划分
-   - 完善的错误处理
-   - 详细的代码注释
-
-### 7.2 技术要点
-
-1. **IPv6协议特性**
-   - 128位地址空间
-   - 简化的头部格式
-   - 消除分片处理复杂性
-
-2. **双协议栈设计**
-   - 统一的网络接口
-   - 地址映射机制
-   - 协议间互操作
-
-3. **网络编程实践**
-   - 字节序处理
-   - 数据包解析
-   - 错误处理机制
-
-### 7.3 应用价值
-
-1. **教学价值**：完整展示了网络协议栈的实现过程
-2. **实践价值**：提供了IPv6协议的具体实现参考
-3. **扩展价值**：为更复杂的网络功能提供了基础框架
-
-本实验成功实现了一个功能完整、测试全面的IPv6双协议栈系统，验证了IPv6协议的关键特性和双协议栈的互操作性，为深入理解现代网络协议提供了良好的实践基础。

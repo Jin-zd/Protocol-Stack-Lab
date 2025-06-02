@@ -50,10 +50,10 @@ int test_failed = 0;
 // 测试辅助函数
 void test_assert(int condition, const char *test_name) {
     if (condition) {
-        printf("✓ PASS: %s\n", test_name);
+        printf("[PASS]: %s\n", test_name);
         test_passed++;
     } else {
-        printf("✗ FAIL: %s\n", test_name);
+        printf("[FAIL]: %s\n", test_name);
         test_failed++;
     }
 }
@@ -430,12 +430,11 @@ int main(int argc, char *argv[]) {
     printf("Failed: %d tests\n", test_failed);
       // 关闭文件
     fclose(control_flow);
-    
-    if (test_failed == 0) {
-        printf("✓ All tests passed! IPv6 dual stack implementation is correct.\n");
+      if (test_failed == 0) {
+        printf("[OK] All tests passed! IPv6 dual stack implementation is correct.\n");
         return 0;
     } else {
-        printf("✗ %d tests failed, please check the implementation.\n", test_failed);
+        printf("[ERROR] %d tests failed, please check the implementation.\n", test_failed);
         return 1;
     }
 }
