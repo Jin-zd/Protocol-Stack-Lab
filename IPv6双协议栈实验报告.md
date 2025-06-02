@@ -618,7 +618,6 @@ Starting IPv6 dual stack unit tests
 [PASS]: IPv6 header remains correct after truncation
 
 === Test IPv6 error handling ===
-=== Test IPv6 error handling ===
 [PASS]: Packet too small is correctly rejected
 [PASS]: Packet with wrong version is correctly rejected
 [PASS]: Packet with mismatched payload length is correctly rejected
